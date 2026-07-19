@@ -1,0 +1,15 @@
+name = "sga-calendar-notifier"
+main = "index.ts"
+compatibility_date = "2026-07-19"
+
+# 12:00 UTC = 8:00 AM EDT / 7:00 AM EST — the daily digest time.
+[triggers]
+crons = ["0 12 * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "sga-calendar-db"
+database_id = "c6cdc20c-4729-4781-8745-8a0eccb5351c"
+
+[vars]
+NTFY_TOPIC = "sga-comms-f7cf0109"
