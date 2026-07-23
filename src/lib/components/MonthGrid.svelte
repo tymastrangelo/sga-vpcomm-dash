@@ -37,9 +37,9 @@
 </script>
 
 <div class="overflow-x-auto">
-	<div class="grid min-w-[640px] grid-cols-7 overflow-hidden rounded-lg border border-stone-200 bg-stone-200 gap-px">
+	<div class="grid grid-cols-7 overflow-hidden rounded-lg border border-stone-200 bg-stone-200 gap-px sm:min-w-160">
 		{#each WEEKDAYS as w (w)}
-			<div class="bg-white px-2 py-1.5 text-xs font-medium text-stone-500">{w}</div>
+			<div class="bg-white px-1 py-1.5 text-center text-xs font-medium text-stone-500 sm:px-2 sm:text-left">{w}</div>
 		{/each}
 
 		{#each days as day (day)}
@@ -47,14 +47,14 @@
 			{@const dayTasks = tasksByDay.get(day) ?? []}
 			{@const dayContent = contentByDay.get(day) ?? []}
 			<div
-				class="min-h-24 cursor-pointer bg-white p-1 align-top hover:bg-stone-50 {inMonth ? '' : 'bg-stone-50 opacity-60'}"
+				class="min-h-14 cursor-pointer bg-white p-1 align-top hover:bg-stone-50 sm:min-h-24 {inMonth ? '' : 'bg-stone-50 opacity-60'}"
 				role="button"
 				tabindex="0"
 				aria-label="Open day {day}"
 				onclick={() => onopenday(day)}
 				onkeydown={(e) => e.key === 'Enter' && onopenday(day)}
 			>
-				<div class="mb-1 flex justify-end">
+				<div class="mb-1 flex justify-center sm:justify-end">
 					<span
 						class="grid size-5 place-items-center rounded-full text-xs {day === today
 							? 'bg-maroon font-semibold text-white'
@@ -64,7 +64,23 @@
 					</span>
 				</div>
 
-				<div class="space-y-1">
+				<!-- Mobile: one dot per item, native-calendar style; tap the day for details -->
+				<div class="flex flex-wrap items-center justify-center gap-0.5 sm:hidden">
+					{#each dayContent.slice(0, 4) as item (item.id)}
+						<span class="size-1.5 rounded-full" style="background: {contentColor(item)}"></span>
+					{/each}
+					{#each dayTasks.slice(0, 4 - Math.min(dayContent.length, 4)) as task (task.id)}
+						<span
+							class="size-1.5 rounded-full {task.done ? 'opacity-30' : ''}"
+							style="background: {task.color ?? '#94a3b8'}"
+						></span>
+					{/each}
+					{#if dayContent.length + dayTasks.length > 4}
+						<span class="text-[9px] leading-none text-stone-400">+</span>
+					{/if}
+				</div>
+
+				<div class="hidden space-y-1 sm:block">
 					{#each dayContent as item (item.id)}
 						<button
 							type="button"

@@ -131,9 +131,14 @@
 					</button>
 				</form>
 			</td>
-			<td class="px-2 py-2 font-medium">{event.organization}</td>
-			<td class="px-2 py-2 text-stone-600">{event.description}</td>
-			<td class="whitespace-nowrap px-2 py-2 text-stone-500">{fmtDate(event.event_date, today)}</td>
+			<td class="px-2 py-2 font-medium">
+				{event.organization}
+				<!-- Mobile: event + date stack under the org so the table fits the screen -->
+				<span class="block font-normal text-stone-600 sm:hidden">{event.description}</span>
+				<span class="block text-xs font-normal text-stone-400 sm:hidden">{fmtDate(event.event_date, today)}</span>
+			</td>
+			<td class="hidden px-2 py-2 text-stone-600 sm:table-cell">{event.description}</td>
+			<td class="hidden whitespace-nowrap px-2 py-2 text-stone-500 sm:table-cell">{fmtDate(event.event_date, today)}</td>
 			<td class="py-2 pl-2 pr-4 text-right">
 				<form method="POST" action="?/deleteEvent" use:enhance class="inline-flex">
 					<input type="hidden" name="id" value={event.id} />
@@ -151,8 +156,8 @@
 				<tr class="text-left text-xs uppercase tracking-wide text-stone-500">
 					<th class="py-2 pl-4 pr-2 font-medium" title="Branding approved">✓</th>
 					<th class="px-2 py-2 font-medium">Organization</th>
-					<th class="px-2 py-2 font-medium">Event</th>
-					<th class="px-2 py-2 font-medium">Date</th>
+					<th class="hidden px-2 py-2 font-medium sm:table-cell">Event</th>
+					<th class="hidden px-2 py-2 font-medium sm:table-cell">Date</th>
 					<th class="py-2 pl-2 pr-4"></th>
 				</tr>
 			</thead>

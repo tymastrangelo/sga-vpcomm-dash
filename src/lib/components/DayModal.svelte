@@ -25,10 +25,13 @@
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && onclose()} />
 
-<div class="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/30 p-4 sm:items-center">
+<div class="fixed inset-0 z-40 flex items-end justify-center bg-black/30 sm:items-center sm:overflow-y-auto sm:p-4">
 	<button type="button" class="fixed inset-0 cursor-default" aria-label="Close" onclick={onclose}></button>
 
-	<div class="relative w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+	<div
+		class="relative max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-xl sm:max-h-none sm:rounded-xl sm:pb-6"
+	>
+		<div class="mx-auto mb-3 h-1 w-10 rounded-full bg-stone-300 sm:hidden" aria-hidden="true"></div>
 		<div class="flex items-center justify-between">
 			<h2 class="text-base font-semibold">
 				{fmtDate(date, today)}
