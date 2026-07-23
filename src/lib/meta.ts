@@ -58,6 +58,15 @@ export interface ContentItem {
 	project_color?: string | null;
 }
 
+export interface FundedEvent {
+	id: number;
+	organization: string;
+	description: string;
+	event_date: string;
+	approved: number;
+	created_at: string;
+}
+
 export interface Link {
 	id: number;
 	title: string;

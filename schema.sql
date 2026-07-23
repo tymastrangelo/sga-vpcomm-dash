@@ -7,6 +7,7 @@ DROP TABLE IF EXISTS projects;
 DROP TABLE IF EXISTS tasks;
 DROP TABLE IF EXISTS tags;
 DROP TABLE IF EXISTS links;
+DROP TABLE IF EXISTS funded_events;
 
 CREATE TABLE tasks (
 	id INTEGER PRIMARY KEY,
@@ -54,6 +55,15 @@ CREATE TABLE links (
 	id INTEGER PRIMARY KEY,
 	title TEXT NOT NULL,
 	url TEXT NOT NULL,
+	created_at TEXT NOT NULL
+);
+
+CREATE TABLE funded_events (
+	id INTEGER PRIMARY KEY,
+	organization TEXT NOT NULL,
+	description TEXT NOT NULL,
+	event_date TEXT NOT NULL,   -- YYYY-MM-DD
+	approved INTEGER NOT NULL DEFAULT 0,  -- promo material has SGA branding, checked off
 	created_at TEXT NOT NULL
 );
 
