@@ -79,7 +79,11 @@
 						>
 							{#if task.is_recurring}<span aria-hidden="true" class="text-stone-400">↻</span>{/if}
 							{task.title}
+							{#if task.location}<span class="text-stone-400">· {task.location}</span>{/if}
 						</button>
+						{#if task.due_time}
+							<span class="text-xs whitespace-nowrap text-stone-500">{fmtTime(task.due_time)}</span>
+						{/if}
 					</li>
 				{/each}
 			</ul>

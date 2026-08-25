@@ -7,8 +7,9 @@
 
 <div class="flex min-h-screen items-center justify-center bg-stone-50 px-4">
 	<form method="POST" class="w-full max-w-sm rounded-xl border border-stone-200 bg-white p-8 shadow-sm">
-		<h1 class="text-xl font-semibold text-maroon">SGA Comms Calendar</h1>
-		<p class="mt-1 text-sm text-stone-500">Sign in to continue.</p>
+		<img src="/sga-seal.png" alt="Elon University SGA" class="mx-auto h-20 w-20" />
+		<h1 class="mt-4 text-center text-xl font-semibold text-maroon">SGA Comms Calendar</h1>
+		<p class="mt-1 text-center text-sm text-stone-500">Sign in to continue.</p>
 
 		{#if form?.error}
 			<p class="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{form.error}</p>

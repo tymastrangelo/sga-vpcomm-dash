@@ -58,6 +58,11 @@ export function fmtDate(date: string, today = todayET()): string {
 	return date.slice(0, 4) === today.slice(0, 4) ? label : `${label}, ${date.slice(0, 4)}`;
 }
 
+/** An ISO timestamp (done_at, created_at) as a YYYY-MM-DD date in Elon time. */
+export function etDate(iso: string): string {
+	return new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+}
+
 /** "3:30 PM" from "15:30" */
 export function fmtTime(time: string): string {
 	const [h, min] = time.split(':').map(Number);

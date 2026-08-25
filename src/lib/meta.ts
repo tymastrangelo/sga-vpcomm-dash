@@ -26,6 +26,8 @@ export interface Task {
 	title: string;
 	notes: string | null;
 	due_date: string | null;
+	due_time: string | null;
+	location: string | null;
 	done: number;
 	done_at: string | null;
 	is_recurring: number;
@@ -79,6 +81,11 @@ export interface Tag {
 	key: string;
 	label: string;
 	color: string;
+}
+
+/** A dated task with a time on it reads as an event you attend, not a to-do. */
+export function isEvent(task: Task): boolean {
+	return Boolean(task.due_time);
 }
 
 export function contentColor(item: ContentItem): string {

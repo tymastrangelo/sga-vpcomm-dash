@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { addDays } from '$lib/dates';
+	import { addDays, fmtTime } from '$lib/dates';
 	import { PLATFORMS, contentColor, type ContentItem, type Task } from '$lib/meta';
 	import StatusBadge from './StatusBadge.svelte';
 	import TaskCheck from './TaskCheck.svelte';
@@ -112,6 +112,7 @@
 								class="min-w-0 flex-1 truncate text-left {task.done ? 'text-stone-400 line-through' : ''}"
 							>
 								{#if task.is_recurring}<span aria-hidden="true" class="text-stone-400">↻</span>{/if}
+								{#if task.due_time}<span class="text-[10px] font-medium text-stone-500">{fmtTime(task.due_time)}</span>{/if}
 								{task.title}
 							</button>
 						</div>

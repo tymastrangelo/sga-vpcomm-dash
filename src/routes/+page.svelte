@@ -5,6 +5,7 @@
 	import EntryModal from '$lib/components/EntryModal.svelte';
 	import MonthGrid from '$lib/components/MonthGrid.svelte';
 	import QuickLinks from '$lib/components/QuickLinks.svelte';
+	import TodayPanel from '$lib/components/TodayPanel.svelte';
 	import TodoSidebar from '$lib/components/TodoSidebar.svelte';
 	import { addMonths } from '$lib/dates';
 	import type { ContentItem, Task } from '$lib/meta';
@@ -38,6 +39,8 @@
 	const dayTasks = $derived(data.tasks.filter((t) => t.due_date === dayOpen));
 	const dayContent = $derived(data.content.filter((c) => c.post_date === dayOpen));
 
+	const brandingPending = $derived(data.funded.filter((e) => !e.approved).length);
+
 	const monthLabel = $derived(
 		new Date(data.month + '-01T00:00:00Z').toLocaleDateString('en-US', {
 			month: 'long',
@@ -69,6 +72,20 @@
 					Today
 				</a>
 			</div>
+
+			{#if data.overdue.length}
+				<span class="rounded-full bg-maroon/10 px-2.5 py-0.5 text-xs font-medium text-maroon">
+					{data.overdue.length} overdue
+				</span>
+			{/if}
+			{#if brandingPending}
+				<a
+					href="/funded"
+					class="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800 hover:bg-amber-200"
+				>
+					{brandingPending} awaiting branding
+				</a>
+			{/if}
 
 			<div class="ml-auto flex items-center gap-3">
 				<div class="flex gap-1 rounded-lg bg-stone-200 p-1 text-sm">
@@ -120,6 +137,7 @@
 	</div>
 
 	<aside class="w-full shrink-0 space-y-4 self-start lg:sticky lg:top-4 lg:w-72">
+		<TodayPanel today={data.today} tasks={data.tasks} content={data.content} onedit={edit} />
 		<TodoSidebar
 			noDate={data.noDate}
 			overdue={data.overdue}

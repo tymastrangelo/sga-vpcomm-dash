@@ -21,7 +21,9 @@ function contentLine(c: ContentItem): string {
 }
 
 function taskLine(t: Task): string {
-	return `• ${t.is_recurring ? '↻ ' : ''}${t.title}`;
+	const time = t.due_time ? `${fmtTime(t.due_time)} — ` : '';
+	const where = t.location ? ` @ ${t.location}` : '';
+	return `• ${time}${t.is_recurring ? '↻ ' : ''}${t.title}${where}`;
 }
 
 export interface Digest {
@@ -37,7 +39,7 @@ export async function buildDigest(d1: D1Database, today: string): Promise<Digest
 
 	const [todayContent, todayTasks, overdue, tomorrowContent] = await Promise.all([
 		d1.prepare(`${contentSelect} WHERE c.post_date = ?1 ORDER BY c.post_time IS NULL, c.post_time, c.id`).bind(today).all(),
-		d1.prepare('SELECT * FROM tasks WHERE due_date = ?1 AND done = 0 ORDER BY id').bind(today).all(),
+		d1.prepare('SELECT * FROM tasks WHERE due_date = ?1 AND done = 0 ORDER BY due_time IS NULL, due_time, id').bind(today).all(),
 		d1.prepare('SELECT * FROM tasks WHERE due_date < ?1 AND done = 0 ORDER BY due_date, id').bind(today).all(),
 		d1.prepare(`${contentSelect} WHERE c.post_date = ?1 ORDER BY c.post_time IS NULL, c.post_time, c.id`).bind(tomorrow).all()
 	]);
@@ -49,7 +51,7 @@ export async function buildDigest(d1: D1Database, today: string): Promise<Digest
 
 	const sections: string[] = [];
 	if (content.length) sections.push(['📣 To post today:', ...lines(content, contentLine)].join('\n'));
-	if (tasks.length) sections.push(['✅ Due today:', ...lines(tasks, taskLine)].join('\n'));
+	if (tasks.length) sections.push(['✅ Today:', ...lines(tasks, taskLine)].join('\n'));
 	if (late.length)
 		sections.push(
 			[`⚠️ Overdue (${late.length}):`, ...lines(late, (t) => `• ${t.title} — was due ${fmtDate(t.due_date!, today)}`)].join('\n')

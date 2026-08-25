@@ -14,6 +14,8 @@ CREATE TABLE tasks (
 	title TEXT NOT NULL,
 	notes TEXT,
 	due_date TEXT,              -- YYYY-MM-DD, NULL = "no date" (sidebar)
+	due_time TEXT,              -- HH:MM, NULL = all-day / plain to-do; a time makes it an event
+	location TEXT,              -- where it is, for events
 	done INTEGER NOT NULL DEFAULT 0,
 	done_at TEXT,               -- ISO timestamp when marked done
 	is_recurring INTEGER NOT NULL DEFAULT 0,

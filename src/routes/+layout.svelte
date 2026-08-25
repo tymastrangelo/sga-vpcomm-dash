@@ -1,6 +1,5 @@
 <script lang="ts">
 	import '../app.css';
-	import favicon from '$lib/assets/favicon.svg';
 	import { page } from '$app/state';
 
 	let { children } = $props();
@@ -35,18 +34,29 @@
 	}
 </script>
 
-<svelte:head>
-	<link rel="icon" href={favicon} />
-</svelte:head>
-
 {#if isLogin}
 	{@render children()}
 {:else}
 	<div class="min-h-screen bg-stone-50 text-stone-900">
 		<!-- Top header: full nav on desktop, slim brand bar on mobile -->
-		<header class="border-b border-stone-200 bg-white pt-[env(safe-area-inset-top)]">
-			<div class="mx-auto flex max-w-7xl items-center gap-6 px-4 py-3">
-				<a href="/" class="text-base font-semibold text-maroon">SGA Comms</a>
+		<header class="border-b border-stone-200 bg-white">
+			<div class="bg-maroon pt-[env(safe-area-inset-top)]">
+				<div class="mx-auto flex max-w-7xl items-center gap-3 px-4 py-2.5">
+					<a href="/" class="flex items-center gap-3" aria-label="SGA Comms — home">
+						<img src="/sga-wordmark.png" alt="SGA — Elon University" class="h-7 w-auto sm:h-8" />
+						<span class="hidden border-l border-white/25 pl-3 text-sm font-medium tracking-wide text-white/80 sm:block">
+							Communications
+						</span>
+					</a>
+					<img
+						src="/sga-seal.png"
+						alt=""
+						aria-hidden="true"
+						class="ml-auto hidden h-10 w-10 brightness-0 invert sm:block"
+					/>
+				</div>
+			</div>
+			<div class="mx-auto flex max-w-7xl items-center gap-6 px-4 py-2">
 				<nav class="hidden flex-1 items-center gap-1 text-sm lg:flex">
 					{#each nav as { href, label } (href)}
 						<a

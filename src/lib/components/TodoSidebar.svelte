@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
-	import { fmtDate } from '$lib/dates';
+	import { etDate, fmtDate } from '$lib/dates';
 	import type { Task } from '$lib/meta';
 	import TaskCheck from './TaskCheck.svelte';
 
@@ -139,6 +139,7 @@
 				<summary class="cursor-pointer text-xs font-semibold tracking-wide text-stone-400 uppercase select-none">
 					Completed ({completed.length})
 				</summary>
+				<p class="mt-1 text-[11px] text-stone-400">Kept for the record — nothing here is deleted.</p>
 				<ul class="mt-1 space-y-1">
 					{#each completed as task (task.id)}
 						<li class="flex items-center gap-2 text-sm">
@@ -150,6 +151,9 @@
 							>
 								{task.title}
 							</button>
+							{#if task.done_at}
+								<span class="text-[11px] whitespace-nowrap text-stone-400">{fmtDate(etDate(task.done_at), today)}</span>
+							{/if}
 							{@render deleteButton(task)}
 						</li>
 					{/each}

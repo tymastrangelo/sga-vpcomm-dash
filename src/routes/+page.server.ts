@@ -1,7 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { monthGridRange, nextDueDate, todayET } from '$lib/dates';
-import { PLATFORMS, STATUSES, type ContentItem, type Link, type Project, type Tag, type Task } from '$lib/meta';
+import { PLATFORMS, STATUSES, type ContentItem, type FundedEvent, type Link, type Project, type Tag, type Task } from '$lib/meta';
 import type { Actions, PageServerLoad } from './$types';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -29,14 +29,15 @@ export const load: PageServerLoad = async ({ platform, url }) => {
 	const contentSelect = `SELECT c.*, p.name AS project_name, p.color AS project_color
 		FROM content_items c LEFT JOIN projects p ON p.id = c.project_id`;
 
-	const [tasks, content, undatedContent, noDate, overdue, completed, projects, tags, links] =
+	const [tasks, content, undatedContent, noDate, overdue, completed, funded, projects, tags, links] =
 		await Promise.all([
-			d1.prepare('SELECT * FROM tasks WHERE due_date BETWEEN ?1 AND ?2 ORDER BY due_date, id').bind(start, end).all(),
+			d1.prepare('SELECT * FROM tasks WHERE due_date BETWEEN ?1 AND ?2 ORDER BY due_date, due_time IS NULL, due_time, id').bind(start, end).all(),
 			d1.prepare(`${contentSelect} WHERE c.post_date BETWEEN ?1 AND ?2 ORDER BY c.post_date, c.post_time, c.id`).bind(start, end).all(),
 			d1.prepare(`${contentSelect} WHERE c.post_date IS NULL ORDER BY c.id`).all(),
 			d1.prepare('SELECT * FROM tasks WHERE due_date IS NULL AND done = 0 ORDER BY sort_order, id DESC').all(),
 			d1.prepare('SELECT * FROM tasks WHERE due_date < ?1 AND done = 0 ORDER BY due_date, id').bind(today).all(),
 			d1.prepare('SELECT * FROM tasks WHERE done = 1 ORDER BY done_at DESC LIMIT 100').all(),
+			d1.prepare('SELECT * FROM funded_events WHERE event_date >= ?1 ORDER BY event_date, id LIMIT 20').bind(today).all(),
 			d1.prepare('SELECT * FROM projects ORDER BY name').all(),
 			d1.prepare('SELECT * FROM tags ORDER BY id').all(),
 			d1.prepare('SELECT * FROM links ORDER BY id').all()
@@ -53,6 +54,7 @@ export const load: PageServerLoad = async ({ platform, url }) => {
 		noDate: noDate.results as unknown as Task[],
 		overdue: overdue.results as unknown as Task[],
 		completed: completed.results as unknown as Task[],
+		funded: funded.results as unknown as FundedEvent[],
 		projects: projects.results as unknown as Project[],
 		tags: tags.results as unknown as Tag[],
 		links: links.results as unknown as Link[]
@@ -65,6 +67,8 @@ function taskFields(d: FormData): FieldResult<{
 	title: string;
 	notes: string | null;
 	due_date: string | null;
+	due_time: string | null;
+	location: string | null;
 	is_recurring: number;
 	recur_interval: string | null;
 	recur_anchor: string | null;
@@ -74,6 +78,9 @@ function taskFields(d: FormData): FieldResult<{
 	if (!title) return { ok: false, error: 'Title is required.' };
 	const due_date = str(d, 'due_date');
 	if (due_date && !DATE_RE.test(due_date)) return { ok: false, error: 'Date must be YYYY-MM-DD.' };
+	const due_time = str(d, 'due_time');
+	if (due_time && !TIME_RE.test(due_time)) return { ok: false, error: 'Time must be HH:MM.' };
+	if (due_time && !due_date) return { ok: false, error: 'A timed event needs a date.' };
 	const recur = str(d, 'recur_interval');
 	if (recur && recur !== 'weekly' && recur !== 'monthly') return { ok: false, error: 'Bad recurrence.' };
 	if (recur && !due_date) return { ok: false, error: 'A recurring task needs a due date.' };
@@ -90,6 +97,8 @@ function taskFields(d: FormData): FieldResult<{
 			title,
 			notes: str(d, 'notes'),
 			due_date,
+			due_time,
+			location: str(d, 'location'),
 			is_recurring: recur ? 1 : 0,
 			recur_interval: recur,
 			recur_anchor,
@@ -131,9 +140,9 @@ export const actions: Actions = {
 		const f = r.fields;
 		await db(platform)
 			.prepare(
-				'INSERT INTO tasks (title, notes, due_date, is_recurring, recur_interval, recur_anchor, color, created_at) VALUES (?1,?2,?3,?4,?5,?6,?7,?8)'
+				'INSERT INTO tasks (title, notes, due_date, due_time, location, is_recurring, recur_interval, recur_anchor, color, created_at) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)'
 			)
-			.bind(f.title, f.notes, f.due_date, f.is_recurring, f.recur_interval, f.recur_anchor, f.color, new Date().toISOString())
+			.bind(f.title, f.notes, f.due_date, f.due_time, f.location, f.is_recurring, f.recur_interval, f.recur_anchor, f.color, new Date().toISOString())
 			.run();
 		return { ok: true };
 	},
@@ -147,9 +156,9 @@ export const actions: Actions = {
 		const f = r.fields;
 		await db(platform)
 			.prepare(
-				'UPDATE tasks SET title=?2, notes=?3, due_date=?4, is_recurring=?5, recur_interval=?6, recur_anchor=?7, color=?8 WHERE id=?1'
+				'UPDATE tasks SET title=?2, notes=?3, due_date=?4, due_time=?5, location=?6, is_recurring=?7, recur_interval=?8, recur_anchor=?9, color=?10 WHERE id=?1'
 			)
-			.bind(taskId, f.title, f.notes, f.due_date, f.is_recurring, f.recur_interval, f.recur_anchor, f.color)
+			.bind(taskId, f.title, f.notes, f.due_date, f.due_time, f.location, f.is_recurring, f.recur_interval, f.recur_anchor, f.color)
 			.run();
 		return { ok: true };
 	},
@@ -176,9 +185,9 @@ export const actions: Actions = {
 			const next = nextDueDate(task.due_date, task.recur_interval, task.recur_anchor);
 			await d1
 				.prepare(
-					'INSERT INTO tasks (title, notes, due_date, is_recurring, recur_interval, recur_anchor, color, created_at) VALUES (?1,?2,?3,1,?4,?5,?6,?7)'
+					'INSERT INTO tasks (title, notes, due_date, due_time, location, is_recurring, recur_interval, recur_anchor, color, created_at) VALUES (?1,?2,?3,?4,?5,1,?6,?7,?8,?9)'
 				)
-				.bind(task.title, task.notes, next, task.recur_interval, task.recur_anchor, task.color, now)
+				.bind(task.title, task.notes, next, task.due_time, task.location, task.recur_interval, task.recur_anchor, task.color, now)
 				.run();
 		}
 		return { ok: true };

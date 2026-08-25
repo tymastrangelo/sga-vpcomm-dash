@@ -72,7 +72,7 @@
 						class="rounded-md px-3 py-1 {activeKind === 'task' ? 'bg-white font-medium shadow-sm' : 'text-stone-500'}"
 						onclick={() => (activeKind = 'task')}
 					>
-						Task
+						Task / Event
 					</button>
 					<button
 						type="button"
@@ -85,7 +85,7 @@
 			{:else}
 				<h2 class="text-base font-semibold">
 					{editing ? 'Edit' : 'New'}
-					{activeKind === 'task' ? 'task' : 'content item'}
+					{activeKind === 'task' ? 'task or event' : 'content item'}
 				</h2>
 			{/if}
 			<button type="button" class="text-stone-400 hover:text-stone-600" onclick={onclose} aria-label="Close">✕</button>
@@ -102,8 +102,19 @@
 				<label class={labelCls} for="t-title">Title</label>
 				<input id="t-title" name="title" required class={inputCls} value={task?.title ?? ''} />
 
-				<label class={labelCls} for="t-date">Due date <span class="font-normal text-stone-400">(blank = to-do list)</span></label>
-				<input id="t-date" name="due_date" type="date" class={inputCls} value={task?.due_date ?? date} />
+				<div class="grid grid-cols-2 gap-3">
+					<div>
+						<label class={labelCls} for="t-date">Date <span class="font-normal text-stone-400">(blank = to-do)</span></label>
+						<input id="t-date" name="due_date" type="date" class={inputCls} value={task?.due_date ?? date} />
+					</div>
+					<div>
+						<label class={labelCls} for="t-time">Time <span class="font-normal text-stone-400">(makes it an event)</span></label>
+						<input id="t-time" name="due_time" type="time" class={inputCls} value={task?.due_time ?? ''} />
+					</div>
+				</div>
+
+				<label class={labelCls} for="t-location">Location <span class="font-normal text-stone-400">(optional)</span></label>
+				<input id="t-location" name="location" class={inputCls} placeholder="Lakeside Dining, Moseley 217…" value={task?.location ?? ''} />
 
 				<label class={labelCls} for="t-recur">Repeats</label>
 				<select id="t-recur" name="recur_interval" class={inputCls} value={task?.recur_interval ?? ''}>
