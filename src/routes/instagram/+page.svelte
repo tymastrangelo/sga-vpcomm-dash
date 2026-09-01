@@ -552,7 +552,8 @@
 	</section>
 
 	<!-- ------------------------------------------------- timing + audience -->
-	<section class="mt-4 grid gap-4 lg:grid-cols-2">
+	<section class="mt-4 grid items-start gap-4 lg:grid-cols-2">
+		<div class="flex flex-col gap-4">
 		<div class="rounded-xl border border-stone-200 bg-white p-4">
 			<h2 class="mb-1 text-sm font-semibold text-stone-900">When to post</h2>
 			<p class="mb-3 text-xs text-stone-500">Every post in range, bucketed by when it went up (Elon time)</p>
@@ -561,6 +562,39 @@
 			{:else}
 				<p class="text-sm text-stone-500">Not enough posts with reach data yet.</p>
 			{/if}
+		</div>
+		{#if stories.length}
+			<div class="rounded-xl border border-stone-200 bg-white p-4">
+				<h2 class="mb-1 text-sm font-semibold text-stone-900">Stories</h2>
+				<p class="mb-3 text-xs text-stone-500">
+					Story metrics only exist for 24 hours — these are the ones a sync caught in time.
+				</p>
+				<dl class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+					{#each [['Stories', String(storyStats.count)], ['Avg reach', fmtFull(storyStats.reach)], ['Replies', fmtFull(storyStats.replies)], ['Link taps', fmtFull(storyStats.taps)]] as [k, v] (k)}
+						<div class="rounded-lg bg-stone-50 p-2.5">
+							<dt class="text-[11px] uppercase tracking-wide text-stone-500">{k}</dt>
+							<dd class="text-lg font-semibold tabular-nums text-stone-900">{v}</dd>
+						</div>
+					{/each}
+				</dl>
+			</div>
+		{/if}
+		{#if reelStats.count}
+			<div class="rounded-xl border border-stone-200 bg-white p-4">
+				<h2 class="mb-1 text-sm font-semibold text-stone-900">Video watch time</h2>
+				<p class="mb-3 text-xs text-stone-500">Across {reelStats.count} reel{reelStats.count === 1 ? '' : 's'} and videos</p>
+				<dl class="grid grid-cols-2 gap-3">
+					<div class="rounded-lg bg-stone-50 p-2.5">
+						<dt class="text-[11px] uppercase tracking-wide text-stone-500">Avg watch time</dt>
+						<dd class="text-lg font-semibold text-stone-900">{fmtDuration(reelStats.avgWatch)}</dd>
+					</div>
+					<div class="rounded-lg bg-stone-50 p-2.5">
+						<dt class="text-[11px] uppercase tracking-wide text-stone-500">Total watch time</dt>
+						<dd class="text-lg font-semibold text-stone-900">{fmtDuration(reelStats.totalWatch)}</dd>
+					</div>
+				</dl>
+			</div>
+		{/if}
 		</div>
 
 		<div class="rounded-xl border border-stone-200 bg-white p-4">
@@ -592,44 +626,6 @@
 			{/if}
 		</div>
 	</section>
-
-	<!-- --------------------------------------------------- stories + reels -->
-	{#if stories.length || reelStats.count}
-		<section class="mt-4 grid gap-4 sm:grid-cols-2">
-			{#if stories.length}
-				<div class="rounded-xl border border-stone-200 bg-white p-4">
-					<h2 class="mb-1 text-sm font-semibold text-stone-900">Stories</h2>
-					<p class="mb-3 text-xs text-stone-500">
-						Story metrics only exist for 24 hours — these are the ones a sync caught in time.
-					</p>
-					<dl class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-						{#each [['Stories', String(storyStats.count)], ['Avg reach', fmtFull(storyStats.reach)], ['Replies', fmtFull(storyStats.replies)], ['Link taps', fmtFull(storyStats.taps)]] as [k, v] (k)}
-							<div class="rounded-lg bg-stone-50 p-2.5">
-								<dt class="text-[11px] uppercase tracking-wide text-stone-500">{k}</dt>
-								<dd class="text-lg font-semibold tabular-nums text-stone-900">{v}</dd>
-							</div>
-						{/each}
-					</dl>
-				</div>
-			{/if}
-			{#if reelStats.count}
-				<div class="rounded-xl border border-stone-200 bg-white p-4">
-					<h2 class="mb-1 text-sm font-semibold text-stone-900">Video watch time</h2>
-					<p class="mb-3 text-xs text-stone-500">Across {reelStats.count} reel{reelStats.count === 1 ? '' : 's'} and videos</p>
-					<dl class="grid grid-cols-2 gap-3">
-						<div class="rounded-lg bg-stone-50 p-2.5">
-							<dt class="text-[11px] uppercase tracking-wide text-stone-500">Avg watch time</dt>
-							<dd class="text-lg font-semibold text-stone-900">{fmtDuration(reelStats.avgWatch)}</dd>
-						</div>
-						<div class="rounded-lg bg-stone-50 p-2.5">
-							<dt class="text-[11px] uppercase tracking-wide text-stone-500">Total watch time</dt>
-							<dd class="text-lg font-semibold text-stone-900">{fmtDuration(reelStats.totalWatch)}</dd>
-						</div>
-					</dl>
-				</div>
-			{/if}
-		</section>
-	{/if}
 
 	<!-- ------------------------------------------------------- leaderboard -->
 	<section class="mt-4 rounded-xl border border-stone-200 bg-white p-4">
