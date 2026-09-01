@@ -11,21 +11,42 @@ import type { AudienceRow, IgDay, IgMedia, IgProfile, IgSyncRun } from '$lib/ins
 import type { Actions, PageServerLoad } from './$types';
 
 const RANGES = [7, 30, 90, 365] as const;
+const ISO = /^\d{4}-\d{2}-\d{2}$/;
+const daysBetween = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000) + 1;
 
 export const load: PageServerLoad = async ({ platform, url, cookies }) => {
-	const to = todayET();
-	const requested = Number(url.searchParams.get('range'));
-	const range = (RANGES as readonly number[]).includes(requested) ? requested : 30;
-	const from = addDays(to, -(range - 1));
+	const today = todayET();
+	const qFrom = url.searchParams.get('from');
+	const qTo = url.searchParams.get('to');
+	const rangeParam = url.searchParams.get('range') ?? '';
+	const requested = Number(rangeParam);
+
+	// `preset` is only for highlighting the picker; everything downstream reads
+	// from/to/range, so a custom window behaves like any other.
+	const preset =
+		qFrom && ISO.test(qFrom)
+			? 'custom'
+			: rangeParam === 'all'
+				? 'all'
+				: String((RANGES as readonly number[]).includes(requested) ? requested : 30);
+
+	const to = preset === 'custom' && qTo && ISO.test(qTo) && qTo <= today ? qTo : today;
+	// All-time starts at the first day with data; until D1 says otherwise, a year.
+	let from =
+		preset === 'custom' ? (qFrom as string)
+		: preset === 'all' ? addDays(to, -364)
+		: addDays(to, -(Number(preset) - 1));
+	if (from > to) from = to;
+	let range = daysBetween(from, to);
 	// Pull the preceding window in the same queries so every tile can show a
 	// like-for-like change instead of a bare number.
-	const prevFrom = addDays(from, -range);
+	let prevFrom = addDays(from, -range);
 
 	// Demo mode short-circuits before touching D1 or the API, so it works with
 	// no account connected and can't accidentally spend the sync's call budget.
 	if (cookies.get(MOCK_COOKIE) === '1') {
 		return {
-			connected: true, mock: true, range, from, to, prevFrom, apiBase: FB_BASE,
+			connected: true, mock: true, preset, range, from, to, prevFrom, apiBase: FB_BASE,
 			profile: mockProfile(to),
 			days: mockDays(prevFrom, to),
 			media: mockMedia(prevFrom, to, to),
@@ -41,10 +62,21 @@ export const load: PageServerLoad = async ({ platform, url, cookies }) => {
 
 		if (!cfg) {
 			return {
-				connected: false, mock: false, range, from, to, prevFrom, profile: null, days: [], media: [],
+				connected: false, mock: false, preset, range, from, to, prevFrom, profile: null, days: [], media: [],
 				audience: [], lastSync: null, pending: 0, cachedMedia: 0, apiBase: FB_BASE,
 				envConfigured: Boolean(env.IG_ACCESS_TOKEN && env.IG_USER_ID)
 			};
+		}
+
+		if (preset === 'all') {
+			const first = await d1
+				.prepare('SELECT MIN(d) AS d FROM (SELECT MIN(date) AS d FROM ig_day UNION ALL SELECT MIN(posted_date) FROM ig_media)')
+				.first<{ d: string | null }>();
+			if (first?.d) {
+				from = first.d;
+				range = daysBetween(from, to);
+				prevFrom = from;
+			}
 		}
 
 		const [profileRow, days, media, audience, lastSync, pending, cached] = await Promise.all([
@@ -67,7 +99,7 @@ export const load: PageServerLoad = async ({ platform, url, cookies }) => {
 		return {
 			connected: true,
 			mock: false,
-			range, from, to, prevFrom,
+			preset, range, from, to, prevFrom,
 			apiBase: cfg.base,
 			profile,
 			days: days.results as unknown as IgDay[],

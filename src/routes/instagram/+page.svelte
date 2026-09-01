@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { enhance } from '$app/forms';
 	import Chart from '$lib/components/ig/Chart.svelte';
 	import Stat from '$lib/components/ig/Stat.svelte';
@@ -32,7 +33,13 @@
 	const inRange = (d: string | null) => !!d && d >= data.from && d <= data.to;
 	const inPrev = (d: string | null) => !!d && d >= (data.prevFrom ?? data.from) && d < data.from;
 
-	const days = $derived(fillDays((data.days as IgDay[]).filter((d) => inRange(d.date)), data.from, data.to) as IgDay[]);
+	// Daily insights only go back as far as the first sync, so an all-time window
+	// would otherwise draw years of blank axis before the data starts. The charts
+	// begin at the first day we actually have; the tiles and post lists still
+	// cover the whole window.
+	const dayRows = $derived((data.days as IgDay[]).filter((d) => inRange(d.date)));
+	const chartFrom = $derived(dayRows[0]?.date ?? data.from);
+	const days = $derived(fillDays(dayRows, chartFrom, data.to) as IgDay[]);
 	const prevDays = $derived((data.days as IgDay[]).filter((d) => inPrev(d.date)));
 	const media = $derived((data.media as IgMedia[]).filter((m) => inRange(m.posted_date)));
 	const prevMedia = $derived((data.media as IgMedia[]).filter((m) => inPrev(m.posted_date)));
@@ -41,10 +48,11 @@
 	const prevFeed = $derived(prevMedia.filter((m) => m.format !== 'story'));
 	const stories = $derived(media.filter((m) => m.format === 'story'));
 
-	const labels = $derived(days.map((d) => shortDate(d.date)));
-	function shortDate(date: string): string {
-		const [, m, d] = date.split('-');
-		return `${Number(m)}/${Number(d)}`;
+	const spansYears = $derived(chartFrom.slice(0, 4) !== data.to.slice(0, 4));
+	const labels = $derived(days.map((d) => shortDate(d.date, spansYears)));
+	function shortDate(date: string, withYear = false): string {
+		const [y, m, d] = date.split('-');
+		return `${Number(m)}/${Number(d)}${withYear ? '/' + y.slice(2) : ''}`;
 	}
 
 	// ------------------------------------------------------------- totals ---
@@ -186,6 +194,15 @@
 		return [...list].sort((a, b) => key(b) - key(a));
 	});
 
+	const PAGE = 10;
+	let shown = $state(PAGE);
+	// A new filter means a new list, so start back at the top of it.
+	$effect(() => {
+		query; tableFormat; tableSort; data.from;
+		shown = PAGE;
+	});
+	const visibleRows = $derived(rows.slice(0, shown));
+
 	// -------------------------------------------------------------- audience ---
 	const audienceOf = (b: string, limit = 8) =>
 		data.audience
@@ -230,11 +247,15 @@
 	);
 
 	const RANGES = [
-		{ v: 7, label: '7d' },
-		{ v: 30, label: '30d' },
-		{ v: 90, label: '90d' },
-		{ v: 365, label: '1y' }
+		{ v: '7', label: '7d' },
+		{ v: '30', label: '30d' },
+		{ v: '90', label: '90d' },
+		{ v: '365', label: '1y' },
+		{ v: 'all', label: 'All' }
 	];
+
+	// Open on load when a custom window is already applied; a toggle after that.
+	let showCustom = $state(untrack(() => data.preset === 'custom'));
 </script>
 
 <svelte:head><title>Instagram — SGA Comms</title></svelte:head>
@@ -317,12 +338,19 @@
 				{#each RANGES as r (r.v)}
 					<a
 						href="?range={r.v}"
-						class="rounded-md px-2.5 py-1 text-sm {data.range === r.v ? 'bg-maroon font-medium text-white' : 'text-stone-600 hover:bg-stone-100'}"
-						aria-current={data.range === r.v ? 'true' : undefined}
+						class="rounded-md px-2.5 py-1 text-sm {data.preset === r.v ? 'bg-maroon font-medium text-white' : 'text-stone-600 hover:bg-stone-100'}"
+						aria-current={data.preset === r.v ? 'true' : undefined}
 					>
 						{r.label}
 					</a>
 				{/each}
+				<button
+					type="button" onclick={() => (showCustom = !showCustom)}
+					aria-expanded={showCustom}
+					class="rounded-md px-2.5 py-1 text-sm {data.preset === 'custom' ? 'bg-maroon font-medium text-white' : 'text-stone-600 hover:bg-stone-100'}"
+				>
+					Custom
+				</button>
 			</div>
 			{#if !data.mock}
 			<form
@@ -335,37 +363,36 @@
 					};
 				}}
 			>
-				<input type="hidden" name="days" value={Math.max(90, data.range)} />
+				<input type="hidden" name="days" value={Math.min(730, Math.max(90, data.range))} />
 				<button type="submit" disabled={syncing}
 					class="rounded-md bg-maroon px-3 py-1.5 text-sm font-medium text-white hover:bg-maroon/90 disabled:opacity-60">
 					{syncing ? 'Syncing…' : 'Sync now'}
 				</button>
 			</form>
-			<form
-				method="POST" action="?/importAll"
-				use:enhance={() => {
-					importing = true;
-					return async ({ update }) => {
-						await update();
-						importing = false;
-					};
-				}}
-			>
-				<button
-					type="submit" disabled={importing || syncing}
-					title="Pull the entire post history, then keep it fresh with Sync now"
-					class="rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-600 hover:bg-stone-100 disabled:opacity-60"
-				>
-					{importing ? 'Importing…' : 'Import all'}
-				</button>
-			</form>
-			<button type="button" onclick={() => (showSettings = !showSettings)}
-				class="rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-600 hover:bg-stone-100">
-				Connection
-			</button>
 			{/if}
 		</div>
 	</div>
+
+	{#if showCustom}
+		<!-- Plain GET form: the range lives in the URL, so it survives a reload
+		     and can be linked, same as the preset buttons. -->
+		<form method="GET" class="mb-4 flex flex-wrap items-end gap-2 rounded-xl border border-stone-200 bg-white p-3 text-sm">
+			<label class="flex flex-col gap-1">
+				<span class="text-xs font-medium text-stone-500">From</span>
+				<input type="date" name="from" value={data.from} max={data.to} required
+					class="rounded-md border border-stone-300 px-2 py-1 focus:border-maroon focus:outline-none" />
+			</label>
+			<label class="flex flex-col gap-1">
+				<span class="text-xs font-medium text-stone-500">To</span>
+				<input type="date" name="to" value={data.to}
+					class="rounded-md border border-stone-300 px-2 py-1 focus:border-maroon focus:outline-none" />
+			</label>
+			<button type="submit" class="rounded-md bg-maroon px-3 py-1.5 font-medium text-white hover:bg-maroon/90">Apply</button>
+			<p class="text-xs text-stone-400">
+				Showing {data.from} → {data.to} ({data.range} day{data.range === 1 ? '' : 's'})
+			</p>
+		</form>
+	{/if}
 
 	{#if data.mock}
 		<p class="mb-4 flex flex-wrap items-center gap-x-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
@@ -391,72 +418,6 @@
 		<p class="mb-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
 			Last sync failed: {data.lastSync.message}
 		</p>
-	{/if}
-	{#if showSettings}
-		<div class="mb-6 rounded-xl border border-stone-200 bg-white p-4 text-sm">
-			<div class="flex flex-wrap items-center gap-x-6 gap-y-2">
-				<p class="text-stone-600">
-					Connected to <strong>@{data.profile?.username ?? '—'}</strong> via
-					{data.apiBase === IG_BASE ? 'Instagram Login' : 'Facebook Login'}.
-				</p>
-				<p class="text-stone-500">
-					{lastSyncAt ? `Last sync ${lastSyncAt} · ${data.lastSync?.calls ?? 0} API calls` : 'Never synced.'}
-				</p>
-				<div class="ml-auto flex gap-2">
-					{#if data.apiBase === IG_BASE}
-						<form method="POST" action="?/refreshToken" use:enhance>
-							<button type="submit" class="rounded-md border border-stone-300 px-3 py-1.5 hover:bg-stone-100">Refresh token</button>
-						</form>
-					{/if}
-					<button
-						type="button"
-						onclick={() => (replacingToken = !replacingToken)}
-						class="rounded-md border border-stone-300 px-3 py-1.5 hover:bg-stone-100"
-					>
-						{replacingToken ? 'Cancel' : 'Replace token'}
-					</button>
-					<form method="POST" action="?/disconnect" use:enhance>
-						<button type="submit" class="rounded-md border border-stone-300 px-3 py-1.5 text-red-700 hover:bg-red-50">Disconnect</button>
-					</form>
-				</div>
-			</div>
-
-			{#if replacingToken}
-				<!-- Tokens expire every 60 days, so swapping one in has to be a normal
-				     thing you can do, not a disconnect-and-set-up-again. -->
-				<form
-					method="POST" action="?/connect"
-					use:enhance={() => async ({ update }) => {
-						await update();
-						replacingToken = false;
-					}}
-					class="mt-3 border-t border-stone-100 pt-3"
-				>
-					<input type="hidden" name="user_id" value={data.profile?.id ?? ''} />
-					<input type="hidden" name="base" value={data.apiBase} />
-					<label class="block text-sm font-medium text-stone-700" for="ig-new-token">
-						New access token
-					</label>
-					<p class="mt-0.5 text-xs text-stone-500">
-						Paste the long-lived token. It's verified against the API before it replaces the old
-						one, and the account stays the same ({data.profile?.username ? '@' + data.profile.username : data.profile?.id}).
-					</p>
-					<textarea
-						id="ig-new-token" name="token" rows="3" required
-						class="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 font-mono text-xs focus:border-maroon focus:outline-none"
-					></textarea>
-					<button type="submit" class="mt-2 rounded-md bg-maroon px-4 py-1.5 text-sm font-medium text-white hover:bg-maroon/90">
-						Verify and save
-					</button>
-				</form>
-			{/if}
-			<p class="mt-2 text-xs text-stone-400">
-				Long-lived tokens expire after 60 days.
-				{data.apiBase === IG_BASE
-					? 'Refresh it here at least once every two months.'
-					: 'Regenerate it in the Meta dashboard and reconnect before then.'}
-			</p>
-		</div>
 	{/if}
 
 	<!-- ------------------------------------------------------------ tiles -->
@@ -486,7 +447,7 @@
 		<div class="rounded-xl border border-stone-200 bg-white p-4">
 			<h2 class="mb-1 text-sm font-semibold text-stone-900">Follower growth</h2>
 			<p class="mb-2 text-xs text-stone-500">
-				{followerGain == null ? 'No follower history yet.' : `${followerGain >= 0 ? '+' : ''}${fmtFull(followerGain)} over ${data.range} days`}
+				{followerGain == null ? 'No follower history yet.' : `${followerGain >= 0 ? '+' : ''}${fmtFull(followerGain)} over ${days.length} days`}
 			</p>
 			<Chart type="line" series={followerChart} {labels} height={214} legend={false} zeroBaseline={false} />
 			{#if hasEstimatedFollowers}
@@ -711,7 +672,7 @@
 						</tr>
 					</thead>
 					<tbody>
-						{#each rows as post (post.id)}
+						{#each visibleRows as post (post.id)}
 							<tr class="cursor-pointer border-t border-stone-100 hover:bg-stone-50" onclick={() => (selected = post)}>
 								<td class="py-2 pl-4 pr-2">
 									<div class="flex items-center gap-2.5">
@@ -745,12 +706,123 @@
 					</tbody>
 				</table>
 			</div>
+			{#if rows.length > shown}
+				<div class="flex flex-wrap items-center justify-center gap-2 border-t border-stone-100 p-3 text-sm">
+					<button type="button" onclick={() => (shown += PAGE)}
+						class="rounded-md border border-stone-300 px-3 py-1.5 text-stone-600 hover:bg-stone-100">
+						Show {Math.min(PAGE, rows.length - shown)} more
+					</button>
+					<button type="button" onclick={() => (shown = rows.length)}
+						class="rounded-md px-3 py-1.5 text-stone-500 hover:bg-stone-100">
+						Show all {rows.length}
+					</button>
+				</div>
+			{/if}
 		{:else}
 			<p class="p-4 text-sm text-stone-500">
 				{data.media.length ? 'Nothing matches those filters.' : 'No posts synced yet — hit “Sync now”.'}
 			</p>
 		{/if}
 	</section>
+
+	<!-- --------------------------------------------------- account actions -->
+	{#if !data.mock}
+		<div class="mt-6 border-t border-stone-200 pt-4">
+			<div class="flex flex-wrap items-center gap-2 text-sm">
+				<form
+					method="POST" action="?/importAll"
+					use:enhance={() => {
+						importing = true;
+						return async ({ update }) => {
+							await update();
+							importing = false;
+						};
+					}}
+				>
+					<button
+						type="submit" disabled={importing || syncing}
+						title="Pull the entire post history, then keep it fresh with Sync now"
+						class="rounded-md border border-stone-300 bg-white px-3 py-1.5 text-stone-600 hover:bg-stone-100 disabled:opacity-60"
+					>
+						{importing ? 'Importing…' : 'Import all'}
+					</button>
+				</form>
+				<button type="button" onclick={() => (showSettings = !showSettings)}
+					class="rounded-md border border-stone-300 bg-white px-3 py-1.5 text-stone-600 hover:bg-stone-100">
+					Connection
+				</button>
+				<p class="text-xs text-stone-400">
+					{lastSyncAt ? `Last sync ${lastSyncAt}` : 'Never synced.'}
+				</p>
+			</div>
+		{#if showSettings}
+			<div class="mb-6 rounded-xl border border-stone-200 bg-white p-4 text-sm">
+				<div class="flex flex-wrap items-center gap-x-6 gap-y-2">
+					<p class="text-stone-600">
+						Connected to <strong>@{data.profile?.username ?? '—'}</strong> via
+						{data.apiBase === IG_BASE ? 'Instagram Login' : 'Facebook Login'}.
+					</p>
+					<p class="text-stone-500">
+						{lastSyncAt ? `Last sync ${lastSyncAt} · ${data.lastSync?.calls ?? 0} API calls` : 'Never synced.'}
+					</p>
+					<div class="ml-auto flex gap-2">
+						{#if data.apiBase === IG_BASE}
+							<form method="POST" action="?/refreshToken" use:enhance>
+								<button type="submit" class="rounded-md border border-stone-300 px-3 py-1.5 hover:bg-stone-100">Refresh token</button>
+							</form>
+						{/if}
+						<button
+							type="button"
+							onclick={() => (replacingToken = !replacingToken)}
+							class="rounded-md border border-stone-300 px-3 py-1.5 hover:bg-stone-100"
+						>
+							{replacingToken ? 'Cancel' : 'Replace token'}
+						</button>
+						<form method="POST" action="?/disconnect" use:enhance>
+							<button type="submit" class="rounded-md border border-stone-300 px-3 py-1.5 text-red-700 hover:bg-red-50">Disconnect</button>
+						</form>
+					</div>
+				</div>
+
+				{#if replacingToken}
+					<!-- Tokens expire every 60 days, so swapping one in has to be a normal
+					     thing you can do, not a disconnect-and-set-up-again. -->
+					<form
+						method="POST" action="?/connect"
+						use:enhance={() => async ({ update }) => {
+							await update();
+							replacingToken = false;
+						}}
+						class="mt-3 border-t border-stone-100 pt-3"
+					>
+						<input type="hidden" name="user_id" value={data.profile?.id ?? ''} />
+						<input type="hidden" name="base" value={data.apiBase} />
+						<label class="block text-sm font-medium text-stone-700" for="ig-new-token">
+							New access token
+						</label>
+						<p class="mt-0.5 text-xs text-stone-500">
+							Paste the long-lived token. It's verified against the API before it replaces the old
+							one, and the account stays the same ({data.profile?.username ? '@' + data.profile.username : data.profile?.id}).
+						</p>
+						<textarea
+							id="ig-new-token" name="token" rows="3" required
+							class="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 font-mono text-xs focus:border-maroon focus:outline-none"
+						></textarea>
+						<button type="submit" class="mt-2 rounded-md bg-maroon px-4 py-1.5 text-sm font-medium text-white hover:bg-maroon/90">
+							Verify and save
+						</button>
+					</form>
+				{/if}
+				<p class="mt-2 text-xs text-stone-400">
+					Long-lived tokens expire after 60 days.
+					{data.apiBase === IG_BASE
+						? 'Refresh it here at least once every two months.'
+						: 'Regenerate it in the Meta dashboard and reconnect before then.'}
+				</p>
+			</div>
+		{/if}
+		</div>
+	{/if}
 
 	{#if data.pending > 0}
 		<p class="mt-4 text-center text-xs text-stone-400">
