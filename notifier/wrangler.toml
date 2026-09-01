@@ -2,9 +2,10 @@ name = "sga-calendar-notifier"
 main = "index.ts"
 compatibility_date = "2026-07-19"
 
-# 12:00 UTC = 8:00 AM EDT / 7:00 AM EST — the daily digest time.
+# Every 4 hours: keeps Instagram stats fresh (story insights expire after 24h).
+# The 12:00 UTC run also sends the daily digest — 8:00 AM EDT / 7:00 AM EST.
 [triggers]
-crons = ["0 12 * * *"]
+crons = ["0 0,4,8,12,16,20 * * *"]
 
 [[d1_databases]]
 binding = "DB"

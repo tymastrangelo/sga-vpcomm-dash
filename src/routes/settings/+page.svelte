@@ -89,6 +89,37 @@
 </section>
 
 <section class="mt-6 max-w-lg rounded-lg border border-stone-200 bg-white p-5">
+	<h2 class="text-sm font-semibold text-stone-700">Instagram demo data</h2>
+	<p class="mt-1 text-xs text-stone-400">
+		Fills the Instagram dashboard with realistic sample numbers so you can see every chart without a
+		connected account. Off by default — the dashboard shows the real account's data.
+	</p>
+
+	<form method="POST" action="?/toggleMockInstagram" use:enhance class="mt-3 flex items-center gap-3">
+		<input type="hidden" name="on" value={data.mockInstagram ? '0' : '1'} />
+		<button
+			type="submit"
+			role="switch"
+			aria-checked={data.mockInstagram}
+			aria-label="Show demo Instagram data"
+			class="relative h-6 w-11 shrink-0 rounded-full transition {data.mockInstagram ? 'bg-maroon' : 'bg-stone-300'}"
+		>
+			<span class="absolute top-0.5 size-5 rounded-full bg-white transition-all {data.mockInstagram ? 'left-[22px]' : 'left-0.5'}"></span>
+		</button>
+		<span class="text-sm text-stone-700">
+			{data.mockInstagram ? 'Showing demo data' : 'Showing real data'}
+		</span>
+	</form>
+
+	{#if data.mockInstagram}
+		<p class="mt-3 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
+			Demo mode is on for this browser only — nobody else sees it, and syncing is disabled while
+			it's on. It clears when you close the browser.
+		</p>
+	{/if}
+</section>
+
+<section class="mt-6 max-w-lg rounded-lg border border-stone-200 bg-white p-5">
 	<h2 class="text-sm font-semibold text-stone-700">Session</h2>
 	<form method="POST" action="/logout" class="mt-3">
 		<button type="submit" class="rounded-md border border-stone-300 px-3 py-1.5 text-sm hover:bg-stone-100">

@@ -6,3 +6,8 @@ pages_build_output_dir = ".svelte-kit/cloudflare"
 binding = "DB"
 database_name = "sga-calendar-db"
 database_id = "c6cdc20c-4729-4781-8745-8a0eccb5351c"
+# `npm run dev` talks to the real deployed database, so localhost shows exactly
+# what the live site shows. Needs `npx wrangler login`, and note that local
+# writes are real writes. `npm run dev:local` falls back to the copy in
+# .wrangler/state for offline work or anything you don't want in production.
+remote = true

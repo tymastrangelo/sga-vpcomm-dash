@@ -3,14 +3,16 @@ import { env } from '$env/dynamic/private';
 import { db } from '$lib/server/db';
 import { buildDigest, sendNtfy } from '$lib/server/notify';
 import { todayET } from '$lib/dates';
+import { MOCK_COOKIE } from '$lib/instagram';
 import type { Tag } from '$lib/meta';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ platform }) => {
+export const load: PageServerLoad = async ({ platform, cookies }) => {
 	const tags = await db(platform).prepare('SELECT * FROM tags ORDER BY id').all();
 	return {
 		tags: tags.results as unknown as Tag[],
-		ntfyTopic: env.NTFY_TOPIC ?? ''
+		ntfyTopic: env.NTFY_TOPIC ?? '',
+		mockInstagram: cookies.get(MOCK_COOKIE) === '1'
 	};
 };
 
@@ -31,6 +33,18 @@ export const actions: Actions = {
 			return fail(400, { error: 'A tag with that name already exists.' });
 		}
 		return { ok: true };
+	},
+
+	toggleMockInstagram: async ({ request, cookies }) => {
+		const on = String((await request.formData()).get('on')) === '1';
+		if (on) {
+			// Session cookie: closing the browser drops you back to real data, which
+			// is the right default for something you only ever want on temporarily.
+			cookies.set(MOCK_COOKIE, '1', { path: '/', httpOnly: true, sameSite: 'lax' });
+		} else {
+			cookies.delete(MOCK_COOKIE, { path: '/' });
+		}
+		return { ok: true, mockInstagram: on };
 	},
 
 	sendTestNotification: async ({ platform }) => {
