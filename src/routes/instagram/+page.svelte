@@ -392,13 +392,6 @@
 			Last sync failed: {data.lastSync.message}
 		</p>
 	{/if}
-	{#if data.pending > 0}
-		<p class="mb-4 rounded-md bg-stone-100 px-3 py-2 text-sm text-stone-600">
-			{data.pending} post{data.pending === 1 ? '' : 's'} still waiting for metrics — the API is rate-limited, so
-			they fill in over the next syncs.
-		</p>
-	{/if}
-
 	{#if showSettings}
 		<div class="mb-6 rounded-xl border border-stone-200 bg-white p-4 text-sm">
 			<div class="flex flex-wrap items-center gap-x-6 gap-y-2">
@@ -762,6 +755,13 @@
 			</p>
 		{/if}
 	</section>
+
+	{#if data.pending > 0}
+		<p class="mt-4 text-center text-xs text-stone-400">
+			{fmtFull(data.pending)} post{data.pending === 1 ? '' : 's'} still waiting on metrics — Meta rate-limits
+			insights, so they fill in over the next few syncs.
+		</p>
+	{/if}
 
 	{#if selected}
 		<PostDrawer media={selected} followers={followerNow} onclose={() => (selected = null)} />
